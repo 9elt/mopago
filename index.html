@@ -106,12 +106,12 @@ button:hover {
     </select>
     <label id="labelReddito">RAL</label>
     <input id="reddito" type="text" placeholder="€">
-    <label>Costo opera pubblica</label>
-    <input id="costoOpera" type="text" placeholder="€">
     <label>Opera pubblica</label>
     <select id="opera">
         <option value="">Seleziona opera...</option>
     </select>
+    <label>Costo opera pubblica</label>
+    <input id="costoOpera" type="text" placeholder="€">
     <button id="calcola">Calcola</button>
     <div class="result-label" id="resultLabel"></div>
     <div class="result" id="risultato"></div>
@@ -133,7 +133,6 @@ function handleEuroInput(input) {
         const raw = parseEuro(input.value);
         input.dataset.value = raw || "";
         input.value = raw ? formatEuro(raw) : "";
-        operaSelect.value = ""; // reset opera se cambio valore
         aggiornaURL();
         calcola(); // ricalcola automaticamente
     });
