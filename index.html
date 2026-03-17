@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calcolo costo opera pubblica</title>
+<style>
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #f2f4f7;
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body {
+    background-image: url('frecce.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+.container {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    width: 420px;
+    max-width: 95%;
+}
+
+h1 {
+    font-size: 20px;
+    margin-bottom: 25px;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+input,
+select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 14px;
+    margin-bottom: 18px;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: #2563eb;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1d4ed8;
+}
+
+.result {
+    margin-top: 15px;
+    text-align: center;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.result-label {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    margin-top: 32px;
+    margin-bottom: 5px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>Quanto paghi di un'opera pubblica?</h1>
+    <label>Tipo di lavoro</label>
+    <select id="lavoro">
+        <option value="dipendente">Lavoratore dipendente</option>
+        <option value="forfettario">Partita IVA forfettaria</option>
+        <option value="piva">Partita IVA</option>
+    </select>
+    <label id="labelReddito">RAL</label>
+    <input id="reddito" type="text" placeholder="€">
+    <label>Costo opera pubblica</label>
+    <input id="costoOpera" type="text" placeholder="€">
+    <label>Opera pubblica</label>
+    <select id="opera">
+        <option value="">Seleziona opera...</option>
+    </select>
+    <button id="calcola">Calcola</button>
+    <div class="result-label" id="resultLabel"></div>
+    <div class="result" id="risultato"></div>
+</div>
+<script>
+// ---- FORMATTAZIONE € ----
+function formatEuro(value) {
+    if (!value) return "";
+    return Number(value).toLocaleString("it-IT");
+}
+
+function parseEuro(value) {
+    if (!value) return 0;
+    return Number(value.replace(/\./g, "").replace(",", "."));
+}
+
+function handleEuroInput(input) {
+    input.addEventListener("input", () => {
+        const raw = parseEuro(input.value);
+        input.dataset.value = raw || "";
+        input.value = raw ? formatEuro(raw) : "";
+        operaSelect.value = ""; // reset opera se cambio valore
+        aggiornaURL();
+        calcola(); // ricalcola automaticamente
+    });
+}
+
+// ---- OPERE ----
+const opere = {
+    "olimpiadi-2026": { nome: "Olimpiadi Milano-Cortina 2026", costo: 5700000000 },
+    "ponte-genova": { nome: "Ponte San Giorgio Genova", costo: 202000000 },
+    "metro-m4-milano": { nome: "Metro M4 Milano", costo: 1800000000 },
+    "tav-torino-lione": { nome: "TAV Torino-Lione", costo: 9600000000 },
+    "expo-2015": { nome: "Expo Milano 2015", costo: 1300000000 },
+    "pedemontana-lombarda": { nome: "Pedemontana Lombarda", costo: 4700000000 },
+    "passante-firenze": { nome: "Passante AV Firenze", costo: 1600000000 },
+    "tramvia-firenze": { nome: "Tramvia Firenze", costo: 1600000000 },
+    "metro-c-roma": { nome: "Metro C Roma", costo: 7400000000 },
+    "mose-venezia": { nome: "MOSE Venezia", costo: 6000000000 },
+    "terzo-valico": { nome: "Terzo Valico dei Giovi", costo: 6200000000 },
+    "metro-napoli": { nome: "Metro Linea 1 Napoli", costo: 3500000000 },
+    "autostrada-brebemi": { nome: "Autostrada BreBeMi", costo: 2400000000 },
+    "pedemontana-veneta": { nome: "Superstrada Pedemontana Veneta", costo: 2200000000 },
+    "aeroporto-roma": { nome: "Espansione Fiumicino", costo: 2500000000 },
+    "alta-velocita-napoli-bari": { nome: "Alta Velocità Napoli-Bari", costo: 6200000000 },
+    "porto-gioia-tauro": { nome: "Porto di Gioia Tauro sviluppo", costo: 390000000 },
+    "metro-catania": { nome: "Metro Catania estensione", costo: 600000000 },
+    "ss106-ionica": { nome: "SS106 Ionica ammodernamento", costo: 3000000000 },
+    "aeroporto-napoli": { nome: "Espansione Aeroporto Napoli", costo: 650000000 }
+};
+
+// ---- ELEMENTI ----
+const operaSelect = document.getElementById("opera");
+const lavoro = document.getElementById("lavoro");
+const reddito = document.getElementById("reddito");
+const costoOpera = document.getElementById("costoOpera");
+const labelReddito = document.getElementById("labelReddito");
+const risultato = document.getElementById("risultato");
+const resultLabel = document.getElementById("resultLabel");
+
+// ---- INIT OPERE ----
+for (const key in opere) {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = opere[key].nome;
+    operaSelect.appendChild(opt);
+}
+
+// ---- FORMAT INPUT ----
+handleEuroInput(reddito);
+handleEuroInput(costoOpera);
+
+// ---- LABEL ----
+function aggiornaLabel() {
+    labelReddito.textContent =
+        lavoro.value === "dipendente" ? "RAL" : "Fatturato";
+}
+
+lavoro.addEventListener("change", () => {
+    aggiornaLabel();
+    aggiornaURL();
+    calcola();
+});
+
+// ---- SELECT OPERA ----
+operaSelect.addEventListener("change", () => {
+    const val = operaSelect.value;
+    if (val) {
+        const costo = opere[val].costo;
+        costoOpera.dataset.value = costo;
+        costoOpera.value = formatEuro(costo);
+    }
+    aggiornaURL();
+    calcola();
+});
+
+// ---- URL ----
+function aggiornaURL() {
+    const params = new URLSearchParams();
+    params.set("lavoro", lavoro.value);
+    if (reddito.dataset.value) params.set("fatturato", reddito.dataset.value);
+    if (costoOpera.dataset.value) params.set("costoOpera", costoOpera.dataset.value);
+    if (operaSelect.value) params.set("nomeOpera", operaSelect.value);
+    history.replaceState(null, "", "?" + params.toString());
+}
+
+// ---- CARICAMENTO QUERY ----
+function caricaDaURL() {
+    const p = new URLSearchParams(location.search);
+    if (p.get("lavoro")) lavoro.value = p.get("lavoro");
+    if (p.get("fatturato")) {
+        const val = Number(p.get("fatturato"));
+        reddito.dataset.value = val;
+        reddito.value = formatEuro(val);
+    }
+    if (p.get("costoOpera")) {
+        const val = Number(p.get("costoOpera"));
+        costoOpera.dataset.value = val;
+        costoOpera.value = formatEuro(val);
+    }
+    if (p.get("nomeOpera")) {
+        operaSelect.value = p.get("nomeOpera");
+    }
+    aggiornaLabel();
+}
+
+// ---- CALCOLO ----
+const ENTRATE_FINALI = 728833000000;
+
+function costoOperaPubblicaPersonale(costoOperaPubblica, tasseAnnuali) {
+    return (tasseAnnuali / ENTRATE_FINALI) * costoOperaPubblica;
+}
+
+function dipendente(ral) {
+    const inps = Math.min(ral, 122295) * 0.0919;
+    const imp = ral - inps;
+    const i1 = Math.min(imp, 28000);
+    const i2 = Math.max(0, Math.min(imp - 28000, 22000));
+    const i3 = Math.max(0, imp - 50000);
+    const irpef = (i1 * (0.23 + 0.012 + 0.008)) + (i2 * (0.33 + 0.017 + 0.008)) + (i3 * (0.43 + 0.017 + 0.008));
+    return irpef + inps;
+}
+
+function piva(f) {
+    const inps = Math.min(f, 122295) * 0.26;
+    const imp = f - inps;
+    const i1 = Math.min(imp, 28000);
+    const i2 = Math.max(0, Math.min(imp - 28000, 22000));
+    const i3 = Math.max(0, imp - 50000);
+    const irpef = (i1 * (0.23 + 0.012 + 0.008)) + (i2 * (0.33 + 0.017 + 0.008)) + (i3 * (0.43 + 0.017 + 0.008));
+    return irpef + inps;
+}
+
+function forfettario(f) {
+    const reddito = f * 0.78;
+    const inps = Math.min(reddito, 122295) * 0.26;
+    return (reddito - inps) * 0.05 + inps;
+}
+
+// ---- FUNZIONE CALCOLO ----
+function calcola() {
+    const r = Number(reddito.dataset.value);
+    const costo = Number(costoOpera.dataset.value);
+
+    if (r < 1000 || costo < 1000) {
+        risultato.textContent = "";
+        resultLabel.textContent = "";
+        return;
+    }
+
+    let tasse;
+    if (lavoro.value === "dipendente") tasse = dipendente(r);
+    else if (lavoro.value === "piva") tasse = piva(r);
+    else tasse = forfettario(r);
+
+    const res = costoOperaPubblicaPersonale(costo, tasse);
+
+    if (operaSelect.value) {
+        resultLabel.textContent = `Per "${opere[operaSelect.value].nome}" hai pagato:`;
+    } else {
+        resultLabel.textContent = "";
+    }
+
+    risultato.textContent = res.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+}
+
+// ---- CLICK ----
+document.getElementById("calcola").addEventListener("click", calcola);
+
+// ---- INIT ----
+caricaDaURL();
+
+calcola(); // calcolo automatico se ci sono valori iniziali
+</script>
+
+</body>
+</html>
